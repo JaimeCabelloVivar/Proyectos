@@ -1,0 +1,232 @@
+---
+title: "Example_MDB"
+author: "Jaime Cabello"
+date: "2023-10-19"
+output: html_document
+---
+
+```{r}
+# Load required libraries
+library(readxl)
+library(caret)
+library(glmnet)
+library(pROC)
+library(tidyverse)
+library(gmodels)
+library(graphics)
+
+# Step 1: Read data from Excel
+file.choose()
+data <- openxlsx::read.xlsx("C:\\Users\\Jaime\\OneDrive\\Desktop\\Ecotec\\Posgrado\\Gestion de Riesgo de Credito\\Cohorte II - 2023\\Foros - Actividades - Proyecto\\Proyecto\\Base_scoring_modificada_final.xlsx")
+```
+
+```{r}
+# Step 2: Data preprocessing
+# You may need to handle missing values, convert categorical variables to factors, and normalize/standardize the numeric predictors if necessary.
+# Apply descriptive statistics
+
+# Exploring the data
+str(data)
+# Determine the number of cases in each scoring model
+table(data$Tipo.Scoring)
+# Divide the excel database to evaluate Mortgage Loans
+nueva.data <- data %>% filter(Tipo.Scoring == "VIV")
+
+#Step 2.1: Evaluation of default - Housing - Tipo Scoring = VIV
+# It is necessary to determine the participation of default in the database 
+# 0 = good client / 1 = bad client
+names(nueva.data)
+table(nueva.data$Dictamen)
+CrossTable(nueva.data$Dictamen)
+CrossTable(nueva.data$Dictamen, prop.r = TRUE, prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE)
+##pie(nueva.data$Dictamen, labels = names(nueva.data$Dictamen), edges = 200, radius = 0.8, density = NULL, angle = 45, col = NULL, main = NULL) ## no salio bonito
+
+
+#Step 2.2: Descriptive statistics of all variables
+summary(nueva.data)
+CrossTable(nueva.data$Actividad.Economica.de.la.Empresa.de.Trabajo, nueva.data$Dictamen)
+CrossTable(nueva.data$Segmento, nueva.data$Dictamen)
+CrossTable(nueva.data$Nacionalidad, nueva.data$Dictamen)
+CrossTable(nueva.data$Localidad, nueva.data$Dictamen)
+CrossTable(nueva.data$Destino.Del.Credito, nueva.data$Dictamen)
+CrossTable(nueva.data$Actividad.Economica.de.la.Empresa.de.Trabajo, nueva.data$Dictamen)
+CrossTable(nueva.data$`Calificacion.a.la.Fecha.de.Otorgamiento.(mas.alta)`, nueva.data$Dictamen)
+CrossTable(nueva.data$`Calificacion.a.la.Fecha.de.Otorgamiento.(mas.baja)`, nueva.data$Dictamen)
+CrossTable(nueva.data$`Calificacion.de.Sistema.Historica.Mes.1.a.12.(mas.alta)`, nueva.data$Dictamen)
+#Crosstable(nueva.data$`Calificacion.de.Sistema.Historica.Mes.1.a.12.(mas.baja)`, nueva.data$Dictamen)
+#CrossTable(nueva.data$`Calificacion.de.Sistema.Historica.Mes.13.a.24.(mas.alta)`, nueva.data$Dictamen)
+#CrossTable(nueva.data$`Calificacion.de.Sistema.Historica.Mes.13.a.24.(mas.baja)`, nueva.data$Dictamen)
+CrossTable(nueva.data$`Calificacion.de.Sistema.Historica.Mes.25.al.36.(mas.alta)`, nueva.data$Dictamen)
+CrossTable(nueva.data$`Calificacion.de.Sistema.Historica.Mes.25.al.36.(mas.baja)`, nueva.data$Dictamen)
+CrossTable(nueva.data$Calificacion.Historica.Mas.Alta, nueva.data$Dictamen)
+CrossTable(nueva.data$Calificacion.Historica.Mas.Baja, nueva.data$Dictamen)
+CrossTable(nueva.data$Cargo.que.ocupa.en.la.Empresa, nueva.data$Dictamen)
+CrossTable(nueva.data$Estado.Civil, nueva.data$Dictamen)
+CrossTable(nueva.data$Estado.del.Bien.a.Financiar, nueva.data$Dictamen)
+CrossTable(nueva.data$Nivel.de.Estudios, nueva.data$Dictamen)
+CrossTable(nueva.data$Profesion, nueva.data$Dictamen)
+CrossTable(nueva.data$Provincia.de.Domicilio, nueva.data$Dictamen)
+CrossTable(nueva.data$Pais.de.Domicilio, nueva.data$Dictamen)
+CrossTable(nueva.data$Ciudad.de.Domicilio, nueva.data$Dictamen)
+CrossTable(nueva.data$Provincia.de.Localizacion.del.Bien.a.Financiar, nueva.data$Dictamen)
+CrossTable(nueva.data$Ciudad.de.Localizacion.del.Bien.a.Financiar, nueva.data$Dictamen)
+CrossTable(nueva.data$Separacion.de.Bienes, nueva.data$Dictamen)
+CrossTable(nueva.data$Sexo, nueva.data$Dictamen)
+CrossTable(nueva.data$Situacion.Laboral, nueva.data$Dictamen)
+CrossTable(nueva.data$Tipo.de.Empresa.que.trabaja, nueva.data$Dictamen)
+CrossTable(nueva.data$Actividad.Economica.Cliente, nueva.data$Dictamen)
+CrossTable(nueva.data$Provincia.De.Trabajo, nueva.data$Dictamen)
+CrossTable(nueva.data$Tipo.de.Inmueble.a.Financiar, nueva.data$Dictamen)
+CrossTable(nueva.data$Tipo.de.Parroquia.de.Localizacion.del.Bien.a.Financiar, nueva.data$Dictamen)
+CrossTable(nueva.data$Tipo.de.Vivienda, nueva.data$Dictamen)
+CrossTable(nueva.data$Garantia.Hipotecaria, nueva.data$Dictamen)
+
+# Exploring the data, it will neccesary eliminate the variable without information
+
+# Crosstable variables
+
+# CrossTable(data$Dictamen, data$`Calificacion.a.la.Fecha.de.Otorgamiento.(mas.alta)`, 
+          # prop.r = TRUE, prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE)
+#CrossTable(data$Dictamen, data$`Calificacion a la Fecha de Otorgamiento (mas baja)`, 
+ #          prop.r = TRUE, prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE)
+
+#Create histogram and boxplot to define outliers
+#Print outliers
+#n_breaks is used to calculate the number of breaks or bins that can be used for binning or #discretizing a dataset
+
+n_breaks <- sqrt(nrow(nueva.data))
+
+hist1 <- hist(nueva.data$Ingresos.Mensuales, main = "Histograma de Ingresos Mensuales", xlab = "USD", ylab = "Frecuencia", col = "red", breaks = n_breaks)
+bp1 <- boxplot(nueva.data$Ingresos.Mensuales, main = "Diagrama de cajas de Ingresos Mensuales",
+        xlab = "Cases", ylab = "USD", col = "red", breaks = n_breaks)
+hist2 <- hist(nueva.data$Monto.Solicitado, main = "Histograma de Monto Solicitado", xlab = "USD", ylab = "Frecuencia", col = "blue", breaks = n_breaks)
+bp2 <- boxplot(nueva.data$Monto.Solicitado, main = "Diagrama de cajas deMonto Solicitado",
+        xlab = "Cases", ylab = "USD", col = "blue")
+hist3 <- hist(nueva.data$Gastos.Aplicados, main = "Histograma de Gastos Aplicados", xlab = "USD", ylab = "Frecuencia", col = "gray", breaks = n_breaks)
+bp3 <- boxplot(nueva.data$Gastos.Aplicados, main = "Diagrama de cajas de Gastos Aplicados", xlab = "Cases", ylab = "USD", col = "gray")
+hist4 <- hist(nueva.data$Mediana.Ingresos.lSS, main = "Histograma de Mediana Ingresos", xlab = "USD", ylab = "Frecuencia", col = "black", breaks = n_breaks)
+bp4 <- boxplot(nueva.data$Mediana.Ingresos.SS, main = "Diagrama de cajas de Gastos Aplicados", xlab = "Cases", ylab = "USD", col = "black")
+hist5 <- hist(nueva.data$Plazo, main = "Histograma de Plazo", xlab = "Años", ylab = "Frecuencia", col = "yellow", breaks = n_breaks )
+bp5 <- boxplot(nueva.data$Plazo, main = "Diagrama de cajas de Plazo", xlab = "Cases", ylab = "Años", col = "yellow")
+hist6 <- hist(nueva.data$Activo.Total, main = "Histograma de Activo Total", xlab = "USD", ylab = "Frecuencia", col = "orange", breaks = n_breaks)
+bp6 <- boxplot(nueva.data$Activo.Total, main = "Diagrama de cajas de Activo Total", xlab = "Cases", ylab = "USD", col = "orange")
+hist7 <- hist(nueva.data$Antiguedad.Laboral, main = "Histograma de Antiguedad laboral", xlab = "meses", ylab = "Frecuencia", col = "purple", breaks = n_breaks)
+bp7 <- boxplot(nueva.data$Antiguedad.Laboral, main = "Diagrama de cajas de Antiguedad laboral", xlab = "Cases", ylab = "meses", col= "purple")
+hist8 <- hist(nueva.data$Apalancamiento.Personal, main = "Histograma de Apalancamiento Personal", xlab = "ratio", ylab = "Frecuencia", col = "green", breaks = n_breaks)
+bp7 <- boxplot(nueva.data$Apalancamiento.Personal, main = "Diagrama de cajas de Apalancamiento personal", xlab = "Cases", ylab = "ratio", col= "green")
+
+```
+
+
+```{r}
+# Outliers
+# Save the outlier's index to index_highincome
+index_highincome <- which(nueva.data$Ingresos.Mensuales > 100000)
+
+# Create data set new_data with outlier deleted
+nueva.data1 <- nueva.data[-index_highincome, ]
+
+# Make bivariate scatterplot of dictamen n puntaje
+#plot(nueva.data$Dictamen, nueva.data$Puntaje, xlab = "dictamen", ylab = "Puntaje")
+
+# Deleting missing data
+# Look at summary of data, no one of those variables have NA's 
+summary(nueva.data1) 
+
+
+# Variables with missing values: 
+# cuota.actual,  Fecha.Vencimiento.Cuota,  Valor.Cuota,
+# puntaje, Monto.Otorgado,Gastos.Aplicados,  Mediana.Ingresos.SS, Antiguedad.Laboral, 
+# Apalancamiento.Personal, Apalancamiento.Sistema, Capacidad.de.Pago.-.Banco
+# Capacidad.de.Pago.-.Sistema, Deuda.Total.Sistema, Dividendos.Sistema
+# Numero.de.Cargas, Numero.de.Casas,Numero.de.Cuentas.Cerradas, Numero.de.Propiedades, 
+# Numero.de.Tarjetas.Credito.en.Buro, Numero.de.Telefonos.No.Celulares, Numero.de.Vehiculos
+# Porcentaje.de.Entrada, Tiempo.en.la.Vivienda, Precio.Venta.Bien, Valor.de.la.carrera
+# Ingreso.familiar, Endeudamiento.del.Activo, Score.Sobreendeudamiento
+# Cuota.estimada.mensual, Ingreso.Predictivo, Cuota.inicia.pago.capital
+# plazo.recuperacion.capital, Factor.ahorro.mensual, %.Financiamiento.Producto
+
+# Deleting missing data
+# Look at summary of data, no one of those variables have NA's 
+# Delete rows, if it exists in the analysis variable with NA's, this an example
+
+columns_to_check <- c("cuota.actual", "Fecha.Vencimiento.Cuota", "Valor.Cuota", "puntaje", "Monto.Otorgado", "Gastos.Aplicados", "Mediana.Ingresos.SS", "Antiguedad.Laboral", "Apalancamiento.Personal","Apalancamiento.Sistema", "Capacidad.de.Pago.-.Banco", "Capacidad.de.Pago.-.Sistema", "Deuda.Total.Sistema", "Dividendos.Sistema", "Numero.de.Cargas", "Numero.de.Casas", "Numero.de.Cuentas.Cerradas", "Numero.de.Propiedades", "Numero.de.Tarjetas.Credito.en.Buro", "Numero.de.Telefonos.No.Celulares", "Numero.de.Vehiculos", "Porcentaje.de.Entrada",      "Tiempo.en.la.Vivienda", "Precio.Venta.Bien", "Valor.de.la.carrera", "Ingreso.familiar",    "Endeudamiento.del.Activo", "Score.Sobreendeudamiento", "Cuota.estimada.mensual",          "Ingreso.Predictivo", "Cuota.inicia.pago.capital", "plazo.recuperacion.capital",            "Factor.ahorro.mensual", "%.Financiamiento.Producto")
+
+
+# Delete columns 
+new_data_delete_variables <- new_data
+new_data_delete_variables$`%.Financiamiento.Producto` <- NULL
+new_data_delete_variables$Factor.ahorro.mensual <- NULL
+new_data_delete_variables$plazo.recuperacion.capital <- NULL
+new_data_delete_variables$Cuota.inicia.pago.capital <- NULL
+new_data_delete_variables$Ingreso.Predictivo<- NULL
+new_data_delete_variables$Cuota.estimada.mensual <- NULL
+new_data_delete_variables$Score.Sobreendeudamiento <- NULL
+new_data_delete_variables$Tasa <- NULL
+new_data_delete_variables$Ingreso.familiar <- NULL
+new_data_delete_variables$Valor.de.la.carrera <- NULL
+new_data_delete_variables$Precio.Venta.Bien <- NULL
+new_data_delete_variables$Tiempo.en.la.Vivienda <- NULL
+
+
+#data_cleaned <- data %>% drop_na(data = columns_to_check)
+
+#data[complete.cases(data),]
+
+
+#index_NA <- which(is.na(data$Cuota.Actual) & is.na(data$Fecha.Vencimiento.Cuota))
+#data_cleaned <- na.omit(new_data)
+
+loan_data_no_NA <- loan_data[-c(index_NA), ]
+```
+
+
+```{r}
+# Step 3: Define the logistic regression model
+model <- glm(dictamen ~ sex + income + loss_given_default + age + expenses + fico_score + work_experience + total_debt + credit_history, 
+             data = data, family = binomial(link = "logit"))
+```
+
+```{r}
+# Step 4: Model validation
+# Split data into training and testing sets
+set.seed(123)  # for reproducibility
+train_index <- createDataPartition(data$default, p = 0.7, list = FALSE)
+train_data <- data[train_index, ]
+test_data <- data[-train_index, ]
+
+# Fit the model on the training data
+model_fit <- glm(default ~ sex + income + loss_given_default + age + expenses + fico_score + work_experience + total_debt + credit_history, 
+                 data = train_data, family = binomial(link = "logit"))
+
+```
+
+```{r}
+# Step 5: Model evaluation
+# Make predictions on the test data
+predictions <- predict(model_fit, newdata = test_data, type = "response")
+
+# Calculate AUC (Area Under the ROC Curve) as a measure of model performance
+roc_object <- roc(test_data$default, predictions)
+AUC <- auc(roc_object)
+
+# Print the AUC
+cat("AUC:", AUC, "\n")
+```
+
+```{r}
+# Step 6: You can further fine-tune and validate your model as needed.
+
+# Additional steps may include cross-validation, feature selection, and hyperparameter tuning.
+
+```
+
+```{r}
+# Step 7: Save the model if it performs satisfactorily
+# You can save the trained model for future use.
+
+# saveRDS(model_fit, "logistic_model.rds")
+
+```
+
+
