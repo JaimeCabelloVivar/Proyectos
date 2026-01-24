@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Invaders</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <div class="score">PUNTOS: <span id="score">0</span></div>
+            <div class="lives">VIDAS: <span id="lives">3</span></div>
+            <div class="level">NIVEL: <span id="level">1</span></div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="gameOver" class="overlay hidden">
+            <h1>GAME OVER</h1>
+            <p>Puntuacion Final: <span id="finalScore">0</span></p>
+            <button id="restartBtn">JUGAR DE NUEVO</button>
+        </div>
+        <div id="startScreen" class="overlay">
+            <h1>SPACE INVADERS</h1>
+            <p>Usa las flechas o A/D para moverte</p>
+            <p>Presiona ESPACIO para disparar</p>
+            <button id="startBtn">INICIAR JUEGO</button>
+        </div>
+        <div id="pauseScreen" class="overlay hidden">
+            <h1>PAUSA</h1>
+            <p>Presiona P o ESC para continuar</p>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
